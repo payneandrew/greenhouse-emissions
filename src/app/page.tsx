@@ -50,6 +50,7 @@ async function getEmissionsData(): Promise<EmissionRecord[]> {
         return [];
       }
 
+      // Sorts data from earliest to latest so we display from left to right on the screen
       return data[1].reverse();
     } catch (error) {
       console.error(`Error fetching data for ${code}:`, error);
@@ -57,6 +58,10 @@ async function getEmissionsData(): Promise<EmissionRecord[]> {
     }
   });
 
+  /*
+    Uses Promise.all to fetch data for all countries in parallel and group them together.
+    This decision was made so that all the data is accessed at once and we don't have to make subsequent requests for each country when filters are applied.
+  */
   const responses = await Promise.all(fetchPromises);
   return responses.flat();
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { debounce } from "lodash";
 import { useMemo, useState } from "react";
 import Chart from "react-apexcharts";
 
@@ -17,6 +18,10 @@ interface EmissionsChartProps {
 export default function EmissionsLineChart({ data }: EmissionsChartProps) {
   const [yearRange, setYearRange] = useState({ start: 1972, end: 2022 });
 
+  const updateYearRange = debounce((newRange) => {
+    setYearRange(newRange);
+  }, 300);
+
   const filteredData = useMemo(
     () =>
       data.filter(
@@ -27,7 +32,7 @@ export default function EmissionsLineChart({ data }: EmissionsChartProps) {
     [data, yearRange]
   );
 
-  const series = useMemo(() => {
+  const series: ApexAxisChartSeries = useMemo(() => {
     const groupedData = filteredData.reduce((acc, entry) => {
       if (!acc[entry.countryiso3code]) {
         acc[entry.countryiso3code] = { name: entry.country.value, data: [] };
@@ -38,11 +43,6 @@ export default function EmissionsLineChart({ data }: EmissionsChartProps) {
       });
       return acc;
     }, {} as Record<string, { name: string; data: { x: string; y: number }[] }>);
-
-    // Sort data from earliest to latest before returning
-    Object.values(groupedData).forEach((countryData) => {
-      countryData.data.sort((a, b) => Number(a.x) - Number(b.x));
-    });
 
     return Object.values(groupedData);
   }, [filteredData]);
@@ -79,7 +79,7 @@ export default function EmissionsLineChart({ data }: EmissionsChartProps) {
           min="1972"
           max="2022"
           onChange={(e) =>
-            setYearRange({ ...yearRange, start: Number(e.target.value) })
+            updateYearRange({ ...yearRange, start: Number(e.target.value) })
           }
           className="border p-2 w-24"
         />
@@ -91,7 +91,7 @@ export default function EmissionsLineChart({ data }: EmissionsChartProps) {
           min="1972"
           max="2022"
           onChange={(e) =>
-            setYearRange({ ...yearRange, end: Number(e.target.value) })
+            updateYearRange({ ...yearRange, end: Number(e.target.value) })
           }
           className="border p-2 w-24"
         />
