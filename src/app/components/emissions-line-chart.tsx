@@ -1,36 +1,41 @@
 "use client";
 
+import { Autocomplete, Chip, TextField } from "@mui/material";
 import { debounce } from "lodash";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import Chart from "react-apexcharts";
+import { ceruleanBlue } from "../../../styling/colors";
+import { EmissionsChartProps } from "../types/emission-data-types";
 
-interface EmissionRecord {
-  countryiso3code: string;
-  country: { value: string };
-  date: string;
-  value: number | null;
-}
-
-interface EmissionsChartProps {
-  data: EmissionRecord[];
-}
+// Dynamically import ApexCharts to avoid SSR issues
+const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 export default function EmissionsLineChart({ data }: EmissionsChartProps) {
   const [yearRange, setYearRange] = useState({ start: 1972, end: 2022 });
+
+  const years = Array.from({ length: 2022 - 1972 + 1 }, (_, i) =>
+    (1972 + i).toString()
+  );
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+
+  const availableCountries = useMemo(
+    () => Array.from(new Set(data.map((entry) => entry.countryiso3code))),
+    [data]
+  );
 
   const updateYearRange = debounce((newRange) => {
     setYearRange(newRange);
   }, 300);
 
-  const filteredData = useMemo(
-    () =>
-      data.filter(
-        (entry) =>
-          Number(entry.date) >= yearRange.start &&
-          Number(entry.date) <= yearRange.end
-      ),
-    [data, yearRange]
-  );
+  const filteredData = useMemo(() => {
+    return data.filter(
+      (entry) =>
+        Number(entry.date) >= yearRange.start &&
+        Number(entry.date) <= yearRange.end &&
+        (selectedCountries.length === 0 ||
+          selectedCountries.includes(entry.countryiso3code))
+    );
+  }, [data, yearRange, selectedCountries]);
 
   const series: ApexAxisChartSeries = useMemo(() => {
     const groupedData = filteredData.reduce((acc, entry) => {
@@ -63,37 +68,100 @@ export default function EmissionsLineChart({ data }: EmissionsChartProps) {
     tooltip: {
       x: { format: "yyyy" },
     },
+    legend: {
+      show: true,
+      showForSingleSeries: true,
+      position: "bottom",
+    },
     stroke: {
       width: 2,
     },
   };
 
   return (
-    <div className="p-4 bg-white rounded shadow-lg">
-      <h2 className="text-xl font-bold mb-4">GHG Emissions Over Time</h2>
-      <div className="flex items-center space-x-4 mb-4">
-        <label>Start Year:</label>
-        <input
-          type="number"
-          value={yearRange.start}
-          min="1972"
-          max="2022"
-          onChange={(e) =>
-            updateYearRange({ ...yearRange, start: Number(e.target.value) })
-          }
-          className="border p-2 w-24"
+    <div className="p-4 gap-4 flex flex-col font-poppins">
+      <div className="flex gap-4 items-center">
+        <div className="flex items-center gap-2">
+          <Autocomplete
+            sx={{
+              display: "inline-flex",
+              width: "auto",
+              minWidth: 200,
+              maxWidth: 600,
+              flexWrap: "wrap",
+              fontFamily: "Poppins",
+            }}
+            multiple
+            fullWidth
+            options={availableCountries}
+            value={selectedCountries}
+            onChange={(_, newValue) => setSelectedCountries(newValue)}
+            disableCloseOnSelect
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option}
+                  {...getTagProps({ index })}
+                  key={option}
+                  sx={{
+                    backgroundColor: ceruleanBlue[100],
+                    color: ceruleanBlue[600],
+                    borderRadius: "8px",
+                    fontWeight: "bold",
+                    fontFamily: "Poppins",
+                  }}
+                />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                variant="outlined"
+                size="small"
+                sx={{
+                  fontFamily: "Poppins",
+                }}
+                fullWidth
+                label="Filter by Country"
+              />
+            )}
+          />
+        </div>
+
+        <Autocomplete
+          sx={{ minWidth: 120 }}
+          options={years}
+          value={yearRange.start.toString()}
+          onChange={(_, newValue) => {
+            if (newValue)
+              updateYearRange({ ...yearRange, start: Number(newValue) });
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Start Year"
+              variant="outlined"
+              size="small"
+            />
+          )}
         />
 
-        <label>End Year:</label>
-        <input
-          type="number"
-          value={yearRange.end}
-          min="1972"
-          max="2022"
-          onChange={(e) =>
-            updateYearRange({ ...yearRange, end: Number(e.target.value) })
-          }
-          className="border p-2 w-24"
+        <Autocomplete
+          sx={{ minWidth: 120 }}
+          options={years}
+          value={yearRange.end.toString()}
+          onChange={(_, newValue) => {
+            if (newValue)
+              updateYearRange({ ...yearRange, end: Number(newValue) });
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="End Year"
+              variant="outlined"
+              size="small"
+            />
+          )}
         />
       </div>
 

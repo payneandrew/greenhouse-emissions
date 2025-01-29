@@ -1,4 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import HeatmapChart from "./components/emissions-heatmap";
 import EmissionsLineChart from "./components/emissions-line-chart";
+import { ChartTabs, Tabs } from "./components/tabs";
 
 interface PaginationInfo {
   page: number;
@@ -63,16 +68,41 @@ async function getEmissionsData(): Promise<EmissionRecord[]> {
     This decision was made so that all the data is accessed at once and we don't have to make subsequent requests for each country when filters are applied.
   */
   const responses = await Promise.all(fetchPromises);
+
+  console.log("Fetched emissions data for all countries", responses);
   return responses.flat();
 }
 
-export default async function Home() {
-  const emissionsData = await getEmissionsData();
+export default function Home() {
+  const [activeTab, setActiveTab] = useState<Tabs>(Tabs.LineChart);
+
+  const [emissionsData, setEmissionsData] = useState<EmissionRecord[]>([]);
+
+  useEffect(() => {
+    getEmissionsData().then(setEmissionsData);
+  }, []);
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">CO₂ Emissions Data</h1>
-      <EmissionsLineChart data={emissionsData} />
+      <h1 className="text-3xl font-semibold mb-6 font-poppins">
+        CO₂ Emissions Data
+      </h1>
+
+      <ChartTabs
+        activeTab={activeTab}
+        tabs={Object.values(Tabs)}
+        onTabChange={setActiveTab}
+      />
+
+      <div className="flex-1">
+        {activeTab === Tabs.LineChart ? (
+          <EmissionsLineChart data={emissionsData} />
+        ) : (
+          <HeatmapChart data={emissionsData} />
+        )}
+      </div>
+      {/* <EmissionsLineChart data={emissionsData} /> */}
+      {/* <StackedAreaChart data={emissionsData} /> */}
     </div>
   );
 }

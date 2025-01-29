@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { ceruleanBlue, gossamerGreen } from "./styling/colors";
 
 export default {
   content: [
@@ -8,9 +9,12 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        poppins: ["Poppins", "sans-serif"],
+      },
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        gossamerGreen,
+        ceruleanBlue,
       },
     },
   },
