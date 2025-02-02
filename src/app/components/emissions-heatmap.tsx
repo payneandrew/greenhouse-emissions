@@ -1,15 +1,48 @@
 "use client";
 
+import { debounce } from "lodash";
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
-import { EmissionsChartProps } from "../types/emission-data-types";
+import { useMemo, useState } from "react";
+import { EmissionRecord } from "../types/emission-data-types";
+import EmissionsFilter from "./emissions-filter";
 
 // Dynamically import ApexCharts to avoid SSR issues
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
+interface EmissionsChartProps {
+  data: EmissionRecord[];
+}
+
 export default function HeatmapChart({ data }: EmissionsChartProps) {
-  const series = useMemo(() => {
-    const groupedData = data.reduce((acc, entry) => {
+  const [yearRange, setYearRange] = useState({ start: 1972, end: 2022 });
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const years = Array.from({ length: 2022 - 1972 + 1 }, (_, i) =>
+    (1972 + i).toString()
+  );
+
+  const availableCountries = useMemo(
+    () => Array.from(new Set(data.map((entry) => entry.countryiso3code))),
+    [data]
+  );
+
+  const updateYearRange = debounce((newRange) => {
+    setYearRange(newRange);
+  }, 300);
+
+  const filteredData = useMemo(
+    () =>
+      data.filter(
+        (entry) =>
+          Number(entry.date) >= yearRange.start &&
+          Number(entry.date) <= yearRange.end &&
+          (selectedCountries.length === 0 ||
+            selectedCountries.includes(entry.countryiso3code))
+      ),
+    [data, yearRange, selectedCountries]
+  );
+
+  const series: ApexAxisChartSeries = useMemo(() => {
+    const groupedData = filteredData.reduce((acc, entry) => {
       if (!acc[entry.countryiso3code]) {
         acc[entry.countryiso3code] = { name: entry.country.value, data: [] };
       }
@@ -21,7 +54,7 @@ export default function HeatmapChart({ data }: EmissionsChartProps) {
     }, {} as Record<string, { name: string; data: { x: string; y: number }[] }>);
 
     return Object.values(groupedData);
-  }, [data]);
+  }, [filteredData]);
 
   const options: ApexCharts.ApexOptions = {
     chart: {
@@ -48,8 +81,21 @@ export default function HeatmapChart({ data }: EmissionsChartProps) {
   };
 
   return (
-    <div className="p-4 bg-white rounded gap-4 flex flex-col font-poppins">
-      <Chart options={options} series={series} type="heatmap" height={400} />
+    <div className="p-4 gap-4 flex flex-col font-poppins">
+      <EmissionsFilter
+        availableCountries={availableCountries}
+        years={years}
+        selectedCountries={selectedCountries}
+        setSelectedCountries={setSelectedCountries}
+        yearRange={yearRange}
+        updateYearRange={updateYearRange}
+      />
+
+      {!data || data.length === 0 ? (
+        <p className="text-red-500">No emissions data available.</p>
+      ) : (
+        <Chart options={options} series={series} type="heatmap" height={600} />
+      )}
     </div>
   );
 }

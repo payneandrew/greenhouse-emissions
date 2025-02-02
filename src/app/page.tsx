@@ -1,39 +1,11 @@
 "use client";
 
+import { CircularProgress } from "@mui/material";
 import { useEffect, useState } from "react";
 import HeatmapChart from "./components/emissions-heatmap";
 import EmissionsLineChart from "./components/emissions-line-chart";
 import { ChartTabs, Tabs } from "./components/tabs";
-
-interface PaginationInfo {
-  page: number;
-  pages: number;
-  per_page: number;
-  total: number;
-  sourceid: string;
-  lastupdated: string;
-}
-
-interface Indicator {
-  id: string;
-  value: string;
-}
-
-interface Country {
-  id: string;
-  value: string;
-}
-
-interface EmissionRecord {
-  indicator: Indicator;
-  country: Country;
-  countryiso3code: string;
-  date: string;
-  value: number | null;
-  unit: string;
-  obs_status: string;
-  decimal: number;
-}
+import { EmissionRecord, PaginationInfo } from "./types/emission-data-types";
 
 type EmissionsApiResponse = [PaginationInfo, EmissionRecord[]];
 
@@ -42,44 +14,66 @@ const indicatorExclusive = "EN.GHG.ALL.MT.CE.AR5"; // Total greenhouse gas emiss
 // const indicatorInclusive = "EN.GHG.ALL.LU.MT.CE.AR5"; // Total greenhouse gas emissions including LULUCF (Mt CO2e)
 const baseUrl = "https://api.worldbank.org/v2/country";
 
-async function getEmissionsData(): Promise<EmissionRecord[]> {
-  const fetchPromises = countryCodes.map(async (code) => {
-    try {
-      const response = await fetch(
-        `${baseUrl}/${code}/indicator/${indicatorExclusive}?format=json`
-      );
-      const data: EmissionsApiResponse = await response.json();
-
-      if (!data || data.length < 2 || !Array.isArray(data[1])) {
-        console.error(`Invalid response format for ${code}`);
-        return [];
-      }
-
-      // Sorts data from earliest to latest so we display from left to right on the screen
-      return data[1].reverse();
-    } catch (error) {
-      console.error(`Error fetching data for ${code}:`, error);
-      return [];
-    }
-  });
-
-  /*
-    Uses Promise.all to fetch data for all countries in parallel and group them together.
-    This decision was made so that all the data is accessed at once and we don't have to make subsequent requests for each country when filters are applied.
-  */
-  const responses = await Promise.all(fetchPromises);
-
-  console.log("Fetched emissions data for all countries", responses);
-  return responses.flat();
-}
-
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tabs>(Tabs.LineChart);
 
   const [emissionsData, setEmissionsData] = useState<EmissionRecord[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getEmissionsData().then(setEmissionsData);
+    const fetchEmissionsData = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const fetchPromises = countryCodes.map(async (code) => {
+          try {
+            const response = await fetch(
+              `${baseUrl}/${code}/indicator/${indicatorExclusive}?format=json`
+            );
+
+            if (!response.ok) {
+              throw new Error(`Failed to fetch data for ${code}`);
+            }
+
+            const data: EmissionsApiResponse = await response.json();
+
+            if (!data || data.length < 2 || !Array.isArray(data[1])) {
+              throw new Error(`Invalid response format for ${code}`);
+            }
+
+            return data[1].reverse(); // Sorts data from earliest to latest so we display from left to right on the screen
+          } catch (error) {
+            console.error(`Error fetching data for ${code}:`, error);
+            return [];
+          }
+        });
+
+        /*
+        Uses Promise.all to fetch data for all countries in parallel and group them together.
+        This decision was made so that all the data is accessed at once and we don't have to make subsequent requests for each country when filters are applied.
+        */
+        const responses = await Promise.all(fetchPromises);
+
+        if (responses.every((res) => res.length === 0)) {
+          throw new Error(
+            "No emissions data available for the selected countries."
+          );
+        }
+
+        console.log("Fetched emissions data for all countries", responses);
+        setEmissionsData(responses.flat());
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "An unknown error occurred."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEmissionsData();
   }, []);
 
   return (
@@ -95,14 +89,20 @@ export default function Home() {
       />
 
       <div className="flex-1">
-        {activeTab === Tabs.LineChart ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <CircularProgress />
+          </div>
+        ) : error ? (
+          <div className="flex justify-center items-center h-64">
+            <p className="text-red-500 font-medium">{error}</p>
+          </div>
+        ) : activeTab === Tabs.LineChart ? (
           <EmissionsLineChart data={emissionsData} />
         ) : (
           <HeatmapChart data={emissionsData} />
         )}
       </div>
-      {/* <EmissionsLineChart data={emissionsData} /> */}
-      {/* <StackedAreaChart data={emissionsData} /> */}
     </div>
   );
 }
