@@ -5,6 +5,7 @@ import { EmissionRecord } from "../types/emission-data-types";
 import EmissionsFilter from "./emissions-filter";
 import EmissionsHeatmapChart from "./emissions-heatmap";
 import EmissionsLineChart from "./emissions-line-chart";
+import EmissionsTable from "./emissions-table";
 import { ChartTabs, Tabs } from "./tabs";
 
 interface EmissionsDashboardProps {
@@ -61,6 +62,16 @@ export default function EmissionsDashboard({
     return Object.values(groupedData);
   }, [filteredData]);
 
+  const tabContent = () => {
+    if (activeTab === Tabs.LineChart) {
+      return <EmissionsLineChart series={series} />;
+    } else if (activeTab === Tabs.Heatmap) {
+      return <EmissionsHeatmapChart series={series} />;
+    } else if (activeTab === Tabs.Table) {
+      return <EmissionsTable emissionsData={emissionsData} />;
+    }
+  };
+
   return (
     <div className="p-6 flex flex-col gap-5">
       <h1 className="text-3xl font-semibold font-poppins">
@@ -82,13 +93,7 @@ export default function EmissionsDashboard({
         onTabChange={setActiveTab}
       />
 
-      <div className="flex-1">
-        {activeTab === Tabs.LineChart ? (
-          <EmissionsLineChart series={series} />
-        ) : (
-          <EmissionsHeatmapChart series={series} />
-        )}
-      </div>
+      <div className="flex-1">{tabContent()}</div>
     </div>
   );
 }

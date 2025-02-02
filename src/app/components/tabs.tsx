@@ -3,6 +3,7 @@ import { Dispatch, SetStateAction } from "react";
 export enum Tabs {
   LineChart = "Line Chart",
   Heatmap = "Heatmap",
+  Table = "Table",
 }
 
 interface TabsProps {
