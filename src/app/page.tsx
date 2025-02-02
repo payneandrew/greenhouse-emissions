@@ -1,8 +1,9 @@
 "use client";
 
 import { CircularProgress } from "@mui/material";
-import { useEffect, useState } from "react";
-import HeatmapChart from "./components/emissions-heatmap";
+import { useEffect, useMemo, useState } from "react";
+import EmissionsFilter from "./components/emissions-filter";
+import EmissionsHeatmapChart from "./components/emissions-heatmap";
 import EmissionsLineChart from "./components/emissions-line-chart";
 import { ChartTabs, Tabs } from "./components/tabs";
 import { EmissionRecord, PaginationInfo } from "./types/emission-data-types";
@@ -20,6 +21,9 @@ export default function Home() {
   const [emissionsData, setEmissionsData] = useState<EmissionRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [yearRange, setYearRange] = useState({ start: 1972, end: 2022 });
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchEmissionsData = async () => {
@@ -39,10 +43,6 @@ export default function Home() {
 
             const data: EmissionsApiResponse = await response.json();
 
-            if (!data || data.length < 2 || !Array.isArray(data[1])) {
-              throw new Error(`Invalid response format for ${code}`);
-            }
-
             return data[1].reverse(); // Sorts data from earliest to latest so we display from left to right on the screen
           } catch (error) {
             console.error(`Error fetching data for ${code}:`, error);
@@ -56,13 +56,6 @@ export default function Home() {
         */
         const responses = await Promise.all(fetchPromises);
 
-        if (responses.every((res) => res.length === 0)) {
-          throw new Error(
-            "No emissions data available for the selected countries."
-          );
-        }
-
-        console.log("Fetched emissions data for all countries", responses);
         setEmissionsData(responses.flat());
       } catch (error) {
         setError(
@@ -76,11 +69,61 @@ export default function Home() {
     fetchEmissionsData();
   }, []);
 
+  console.log("emissions data", emissionsData);
+
+  const filteredData = useMemo(
+    () =>
+      emissionsData.filter(
+        (entry) =>
+          Number(entry.date) >= yearRange.start &&
+          Number(entry.date) <= yearRange.end &&
+          (selectedCountries.length === 0 ||
+            selectedCountries.includes(entry.countryiso3code))
+      ),
+    [emissionsData, yearRange, selectedCountries]
+  );
+
+  const availableCountries = useMemo(
+    () =>
+      Array.from(new Set(emissionsData.map((entry) => entry.countryiso3code))),
+    [emissionsData]
+  );
+
+  const years = useMemo(
+    () =>
+      Array.from({ length: 2022 - 1972 + 1 }, (_, i) => (1972 + i).toString()),
+    []
+  );
+
+  const series: ApexAxisChartSeries = useMemo(() => {
+    const groupedData = filteredData.reduce((acc, entry) => {
+      if (!acc[entry.countryiso3code]) {
+        acc[entry.countryiso3code] = { name: entry.country.value, data: [] };
+      }
+      acc[entry.countryiso3code].data.push({
+        x: entry.date,
+        y: entry.value ?? 0,
+      });
+      return acc;
+    }, {} as Record<string, { name: string; data: { x: string; y: number }[] }>);
+
+    return Object.values(groupedData);
+  }, [filteredData]);
+
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-semibold mb-6 font-poppins">
-        CO₂ Emissions Data
+    <div className="p-6 flex flex-col gap-5">
+      <h1 className="text-3xl font-semibold font-poppins">
+        Greenhouse Gas Emissions Data
       </h1>
+
+      <EmissionsFilter
+        availableCountries={availableCountries}
+        years={years}
+        selectedCountries={selectedCountries}
+        setSelectedCountries={setSelectedCountries}
+        yearRange={yearRange}
+        updateYearRange={setYearRange}
+      />
 
       <ChartTabs
         activeTab={activeTab}
@@ -98,9 +141,9 @@ export default function Home() {
             <p className="text-red-500 font-medium">{error}</p>
           </div>
         ) : activeTab === Tabs.LineChart ? (
-          <EmissionsLineChart data={emissionsData} />
+          <EmissionsLineChart series={series} />
         ) : (
-          <HeatmapChart data={emissionsData} />
+          <EmissionsHeatmapChart series={series} />
         )}
       </div>
     </div>

@@ -14,7 +14,6 @@
     "@mui/icons-material": "^6.4.2",
     "@mui/material": "^6.4.2",
     "apexcharts": "^4.4.0",
-    "lodash": "^4.17.21",
     "next": "15.1.6",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",
@@ -22,7 +21,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@types/lodash": "^4.17.15",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
