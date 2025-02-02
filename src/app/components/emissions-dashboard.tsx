@@ -68,7 +68,7 @@ export default function EmissionsDashboard({
     } else if (activeTab === Tabs.Heatmap) {
       return <EmissionsHeatmapChart series={series} />;
     } else if (activeTab === Tabs.Table) {
-      return <EmissionsTable emissionsData={emissionsData} />;
+      return <EmissionsTable emissionsData={filteredData} />;
     }
   };
 
