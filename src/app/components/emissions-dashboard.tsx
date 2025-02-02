@@ -16,7 +16,7 @@ export default function EmissionsDashboard({
 }: EmissionsDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tabs>(Tabs.LineChart);
 
-  const [yearRange, setYearRange] = useState({ start: 1972, end: 2022 });
+  const [yearRange, setYearRange] = useState(defaultYearRange);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
 
   const filteredData = useMemo(
@@ -39,7 +39,10 @@ export default function EmissionsDashboard({
 
   const years = useMemo(
     () =>
-      Array.from({ length: 2022 - 1972 + 1 }, (_, i) => (1972 + i).toString()),
+      Array.from(
+        { length: defaultYearRange.end - defaultYearRange.start + 1 },
+        (_, i) => (defaultYearRange.start + i).toString()
+      ),
     []
   );
 
@@ -89,3 +92,5 @@ export default function EmissionsDashboard({
     </div>
   );
 }
+
+const defaultYearRange = { start: 1972, end: 2022 };

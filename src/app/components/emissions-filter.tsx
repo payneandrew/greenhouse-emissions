@@ -20,12 +20,13 @@ export default function EmissionsFilter({
   yearRange,
   updateYearRange,
 }: EmissionsFilterProps) {
+  // instead of having an explicit "all" selector, all countries are loaded in by default and clearing your selections show all of the countries.
   return (
     <div className="flex gap-4 items-center">
       <Autocomplete
         sx={{
           minWidth: 200,
-          maxWidth: 600,
+          width: "auto",
           flexWrap: "wrap",
           fontFamily: "Poppins",
         }}
@@ -69,12 +70,7 @@ export default function EmissionsFilter({
             updateYearRange({ ...yearRange, start: Number(newValue) });
         }}
         renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Start Year"
-            variant="outlined"
-            size="small"
-          />
+          <TextField {...params} label="Start Year" size="small" />
         )}
       />
       <Autocomplete
@@ -86,12 +82,7 @@ export default function EmissionsFilter({
             updateYearRange({ ...yearRange, end: Number(newValue) });
         }}
         renderInput={(params) => (
-          <TextField
-            {...params}
-            label="End Year"
-            variant="outlined"
-            size="small"
-          />
+          <TextField {...params} label="End Year" size="small" />
         )}
       />
     </div>
